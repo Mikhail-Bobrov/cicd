@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.name }}
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  progressDeadlineSeconds: 300
+  replicas: {{ .Values.deployment.replica }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+    spec:
+      containers:
+      - image: {{ .Files.Get (printf "%s/%s" .Values.imagedir .Values.imagename  ) | trim }}
+      {{- if .Values.deployment.env }}
+        env:
+      {{- range $key, $value := .Values.deployment.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+      {{- end }}
+      {{- end }}
+        imagePullPolicy: IfNotPresent
+        {{ if .Values.deployment.livenessProbe -}}
+        livenessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          successThreshold: 1
+          tcpSocket:
+            port: {{ .Values.service.port }}
+          timeoutSeconds: 1
+        {{ end -}}
+        name: {{ .Values.name }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: http
+          protocol: TCP
+        {{ if .Values.deployment.readinessProbe -}}
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: {{ .Values.service.port }}
+          timeoutSeconds: 1
+        {{ end -}}
+        resources:
+          limits:
+            cpu: {{ .Values.deployment.resources.limits.cpu }}
+            ephemeral-storage: {{ .Values.deployment.resources.limits.ephemeral_storage }}
+            memory: {{ .Values.deployment.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.deployment.resources.requests.cpu }}
+            ephemeral-storage: {{ .Values.deployment.resources.requests.ephemeral_storage }}
+            memory: {{ .Values.deployment.resources.requests.memory }}
+      dnsPolicy: ClusterFirst
+      {{ if .Values.deployment.imagePullSecrets -}}
+      imagePullSecrets:
+      {{- range .Values.deployment.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
+      {{- end }}
+      restartPolicy: {{ .Values.deployment.restartPolicy }}
+      terminationGracePeriodSeconds: 30
