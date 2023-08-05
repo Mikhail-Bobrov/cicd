@@ -22,8 +22,20 @@ spec:
       labels:
         app: {{ .Values.name }}
     spec:
+      {{- if .Values.deployment.podAntiAffinity }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Values.name }}
+            topologyKey: kubernetes.io/hostname
+      {{- end }}
       containers:
-      - image: {{ .Files.Get (printf "%s/%s" .Values.imagedir .Values.imagename  ) | trim }}
+      - image: {{ .Files.Get (printf "%s/%s" .Values.imagedir .Values.imagename  ) | trim | default "defaultimage" }}
       {{- if .Values.deployment.env }}
         env:
       {{- range $key, $value := .Values.deployment.env }}
