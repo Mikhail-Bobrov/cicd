@@ -7,9 +7,9 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   ports:
-  - port: 3000
+  - port: {{ .Values.service.port }}
     protocol: TCP
-    targetPort: 3000
+    targetPort: {{ .Values.service.port }}
     name: {{ .Values.name }}
   selector:
     app: {{ .Values.name }}
