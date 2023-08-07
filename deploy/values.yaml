@@ -17,7 +17,7 @@ deployment:
 ##- name-default-secret
   probe:
     livenessProbe:
-      enable: true
+      enable: false
       probeType: http  ### also you can use ---tcp---
       initialDelaySeconds: 120
       periodSeconds: 5
@@ -30,7 +30,7 @@ deployment:
       tcp:
         port: {}  # default service port
     readinessProbe:
-      enable: true
+      enable: false
       initialDelaySeconds: 120
       periodSeconds: 5
       successThreshold: 1
@@ -46,10 +46,10 @@ deployment:
     requests:
       #cpu: 10m
       #memory: 512Mi
-      #ephemeral_storage: 512Mi
+      #ephemeral-storage: 512Mi
     limits:
       cpu: "500m"
-      #ephemeral_storage: 1Gi
+      #ephemeral-storage: 1Gi
       memory: 1Gi
   restartPolicy: Always
   env: {}

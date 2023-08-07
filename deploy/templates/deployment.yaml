@@ -80,7 +80,7 @@ spec:
         name: {{ .Values.name }}
         ports:
         - containerPort: {{ .Values.service.port }}
-          name: http
+          name: {{ printf "%.15s" .Values.name }}
           protocol: TCP
         {{- if .Values.deployment.probe.readinessProbe.enable }}
         readinessProbe:
@@ -114,7 +114,7 @@ spec:
             memory: {{ .Values.deployment.resources.requests.memory }}
             {{- end }}
             {{- if .Values.deployment.resources.requests.ephemeral_storage }}
-            ephemeral_storage: {{ .Values.deployment.resources.requests.ephemeral_storage }}
+            ephemeral-storage: {{ .Values.deployment.resources.requests.ephemeral_storage }}
             {{- end }}
           {{- end }}
           {{- if .Values.deployment.resources.limits }}
@@ -126,7 +126,7 @@ spec:
             memory: {{ .Values.deployment.resources.limits.memory }}
             {{- end }}
             {{- if .Values.deployment.resources.limits.ephemeral_storage }}
-            ephemeral_storage: {{ .Values.deployment.resources.limits.ephemeral_storage }}
+            ephemeral-storage: {{ .Values.deployment.resources.limits.ephemeral_storage }}
             {{- end }}
           {{- end }}
       dnsPolicy: ClusterFirst

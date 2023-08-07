@@ -1,3 +1,7 @@
+current available projects -----   dc-preprod    -----     gcp-dev   
+current available services -----   api-gateway,analytics,chat-bot,bbsoft-client,dwh------
+
+
 Mini instruction for deploy
 
 This project is designed to deploy all bbsoft services on bbsoft clusters

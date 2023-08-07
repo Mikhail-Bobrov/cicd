@@ -1,37 +1,83 @@
 name: notification
 imagename: notification
 namespace: bbsoft
+
+
 service:
   type: ClusterIP
   port: 8080
+
+
 deployment:
   replica: 1
-  livenessProbe: true
-  readinessProbe: true
+  podAntiAffinity: true
+  imagePullSecrets:
+    - docker-registry-secret
+  probe:
+    livenessProbe:
+      enable: true
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
+    readinessProbe:
+      enable: true
+      initialDelaySeconds: 15
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
   resources:
     requests:
-      cpu: 10m
-      memory: 512Mi
-      ephemeral_storage: 512Mi
-    limits:
-      cpu: "500m"
-      ephemeral_storage: 1Gi
+      cpu: 300m
       memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
   restartPolicy: Always
   env:
-    SECURITY_CORS_ORIGINS: '*, https://game-api-dev.bbsoft.by, https://apigateway-dev.bbsoft.by, https://static-dev.bbsoft.by'
-    NEXT_PUBLIC_API_URL: https://apigateway-dev.bbsoft.by/
-    NEXT_PUBLIC_STAGE_API_TOLOTO_URL: https://stage-api.toloto.by
-    NEXT_PUBLIC_STAGE_ACTIVE_LOTTERY_API_URL: https://stage-active-lottery.toloto.by
+    SERVER_PORT: '8080'
+    KAFKA_REPLICATION-FACTOR: '3'
+    JWT_ACCESS-TOKEN-TIMEOUT: '10m'
+    MANAGEMENT_METRICS_EXPORT_STATSD_ENABLED: 'true'
+    MANAGEMENT_METRICS_EXPORT_STATSD_HOST: 'telegraf-udp-lottery.mon.svc.cluster.local'
+    MANAGEMENT_METRICS_CUSTOM_TAGS_SOURCE: 'notification'
+    MAIL_SENDGRID_BELBET_FROM_EMAIL: 'noreply@belbet.by'
+    MAIL_SENDGRID_BELBET_FROM_NAME: 'qa-bbsoft'
+    MAIL_SENDGRID_BELBET_REPLY_TO: 'support@belbet.by'
+    FIREBASE_ADMIN-SDK_DATABASE-URL: 'https://bbsoft-firebase-dev-default-rtdb.firebaseio.com'
+    FIREBASE_ADMIN-SDK_SERVICE-ACCOUNT-KEY-PATH: '/keys.service/bbsoft-firebase-dev-firebase-adminsdk.json'
+    MAIL_INFOBIP_ENABLED: 'False'
+    FIREBASE_OLD-ADMIN-SDK_DATABASE-URL: 'https://lottery-stage-1.firebaseio.com'
+    FIREBASE_OLD-ADMIN-SDK_SERVICE-ACCOUNT-KEY-PATH: '/keys.service/lottery-stage-1-firebase-adminsdk.json'
+    SMS_MTS_BELBET_SEND-URL: 'https://api.communicator.mts.by/${sms.mts.belbet.client-id}/json2/simple'
+    CHAT-BOT_URL: 'http://chat-bot-qa.belbet.by/notification'
+    NEXT_PUBLIC_FIREBASE_API_KEY: 'AIzaSyDIBCx-M4_JPXp2pbg6cPCiR2GSdXHkSYM'
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'bbsoft-firebase-dev.firebaseapp.com'
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'bbsoft-firebase-dev'
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'bbsoft-firebase-dev.appspot.com'
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '893296512436'
+    NEXT_PUBLIC_FIREBASE_APP_ID: '1:893296512436:web:9a615ad3c7d0f14b8a36e1'
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: 'G-Z32SM31QZM'
+    NEXT_PUBLIC_FIREBASE_VAPID_KEY: 'BCc1r8PwSb4BQaKljKz3eEqHcunNb6SmRNKZevrBnkLJav3KZRhtBF7z8C1PH1h07rC9lM3D2PHCECr44iTqo10'
+  envFromSecret:
+    JWT_KEY:
+      platform-service-ssl: ssl
+    KAFKA_ADDRESS:
+      kafka-bbsoft-main-preprod-write: host
+    DATASOURCE_ADDRESS:
+      postgres-bbsoft-main-preprod-write: host
+    DATASOURCE_PORT:
+      postgres-bbsoft-main-preprod-write: port
+    DATASOURCE_USERNAME:
+      postgres-bbsoft-main-preprod-admin: superuser
+    DATASOURCE_PASSWORD:
+      postgres-bbsoft-main-preprod-admin: superuser-password
+
+
 ingress:
-  enable: true
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/configuration-snippet: real_ip_header X-Forwarded-For; real_ip_recursive on;
-  hosts:
-  - host: apigateway-preprod.bbsoft.by
-    paths:
-      - path: /
-        pathType: Prefix
+  enable: false
+
+
 hpa:
   enable: false

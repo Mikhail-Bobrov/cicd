@@ -1,37 +1,66 @@
 name: dwh-service
 imagename: dwh
 namespace: bbsoft
+
+
 service:
   type: ClusterIP
   port: 8080
+
+
 deployment:
   replica: 1
-  livenessProbe: true
-  readinessProbe: true
+  podAntiAffinity: true
+  imagePullSecrets:
+    - docker-registry-secret
+  probe:
+    livenessProbe:
+      enable: true
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
+    readinessProbe:
+      enable: true
+      initialDelaySeconds: 10
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
   resources:
     requests:
-      cpu: 10m
+      cpu: 200m
       memory: 512Mi
-      ephemeral_storage: 512Mi
     limits:
       cpu: "500m"
-      ephemeral_storage: 1Gi
       memory: 1Gi
   restartPolicy: Always
   env:
-    SECURITY_CORS_ORIGINS: '*, https://game-api-dev.bbsoft.by, https://apigateway-dev.bbsoft.by, https://static-dev.bbsoft.by'
-    NEXT_PUBLIC_API_URL: https://apigateway-dev.bbsoft.by/
-    NEXT_PUBLIC_STAGE_API_TOLOTO_URL: https://stage-api.toloto.by
-    NEXT_PUBLIC_STAGE_ACTIVE_LOTTERY_API_URL: https://stage-active-lottery.toloto.by
+    DATASOURCE_DATABASE: 'postgres'
+    SERVER_PORT: '8080'
+    KAFKA_REPLICATION-FACTOR: '1'
+    MANAGEMENT_METRICS_EXPORT_STATSD_ENABLED: 'true'
+    MANAGEMENT_METRICS_EXPORT_STATSD_HOST: 'telegraf-udp-lottery.mon.svc.cluster.local'
+    MANAGEMENT_METRICS_CUSTOM_TAGS_SOURCE: 'dwh-service'
+    DATASOURCE_MAX-POOL-SIZE: '30'
+  envFromSecret:
+    JWT_KEY:
+      dwh-service-key: jwt-key
+    KAFKA_ADDRESS:
+      kafka-bbsoft-main-preprod-write: host
+    DATASOURCE_ADDRESS:
+      postgres-bbsoft-main-preprod-write: host
+    DATASOURCE_PORT:
+      postgres-bbsoft-main-preprod-write: port
+    DATASOURCE_USERNAME:
+      postgres-bbsoft-main-preprod-admin: superuser
+    DATASOURCE_PASSWORD:
+      postgres-bbsoft-main-preprod-admin: superuser-password
+
+
 ingress:
-  enable: true
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/configuration-snippet: real_ip_header X-Forwarded-For; real_ip_recursive on;
-  hosts:
-  - host: apigateway-preprod.bbsoft.by
-    paths:
-      - path: /
-        pathType: Prefix
+  enable: false
+
+
 hpa:
   enable: false

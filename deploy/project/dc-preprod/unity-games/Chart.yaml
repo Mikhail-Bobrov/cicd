@@ -1,23 +1,42 @@
 name: unity-games
 imagename: unity-games
 namespace: bbsoft
+
+
 service:
   type: ClusterIP
   port: 3000
+
+
 deployment:
   replica: 1
-  livenessProbe: true
-  readinessProbe: true
+  imagePullSecrets:
+    - docker-registry-secret
+  probe:
+    livenessProbe:
+      enable: true
+      initialDelaySeconds: 15
+      probeType: tcp
+      tcp:
+        port: 3000
+    readinessProbe:
+      enable: true
+      initialDelaySeconds: 15
+      probeType: tcp
+      tcp:
+        port: 3000
   resources:
     requests:
-      cpu: 10m
-      memory: 512Mi
-      ephemeral_storage: 512Mi
+      cpu: 300m
+      memory: 1Gi
+      ephemeral-storage: 512Mi
     limits:
       cpu: "1"
-      ephemeral_storage: 1Gi
+      ephemeral-storage: 1Gi
       memory: 2Gi
   restartPolicy: Always
+
+
 ingress:
   enable: true
   annotations:
@@ -27,5 +46,7 @@ ingress:
     paths:
       - path: /
         pathType: Prefix
+
+
 hpa:
   enable: false
