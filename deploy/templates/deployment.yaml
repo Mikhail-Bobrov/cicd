@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: {{ .Values.name }}
+    name: {{ .Values.imagename }}
   name: {{ .Values.name }}
   namespace: {{ .Values.namespace }}
 spec:
@@ -21,6 +22,7 @@ spec:
     metadata:
       labels:
         app: {{ .Values.name }}
+        name: {{ .Values.imagename }}
     spec:
       {{- if .Values.deployment.podAntiAffinity }}
       affinity:

@@ -1,0 +1,56 @@
+name: analytics
+imagename: analytics
+namespace: bbsoft
+
+
+service:
+  type: ClusterIP
+  port: 8080
+
+
+deployment:
+  replica: 1
+  imagePullSecrets:
+    - docker-registry-secret
+  probe:
+    livenessProbe:
+      enable: true
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
+    readinessProbe:
+      enable: true
+      initialDelaySeconds: 10
+      probeType: http
+      http:
+        path: /actuator/health
+        port: 8080
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  restartPolicy: Always
+  env: {}
+  envFromSecret:
+    JWT_KEY:
+      analytics-keys: jwt-key
+    BIGQUERY_PRIVATE-KEY:
+      analytics-keys: bigquery-key
+
+ingress:
+  enable: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+  - host: analytics-api-preprod.bbsoft.by
+    paths:
+      - path: /
+        pathType: Prefix
+
+
+hpa:
+  enable: false

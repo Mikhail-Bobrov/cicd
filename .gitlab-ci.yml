@@ -1,0 +1,109 @@
+variables:
+  REGISTRY_URL: 'default.registry'
+  REGISTRY_PROJECT: 'lottery'
+  REGION: 'europe-west1'
+  BRANCH: 'main'
+  SERVICE: 'bbsoft-client'
+  DEPLOY_GCP: 'false'
+  DEPLOY_DC: 'false'
+  RELEASE: "false"
+  NAMESPACE: "default"
+
+workflow:
+  name: 'CHANGE_VARS'
+  rules:
+    - if: '$PROJECT == "gcp-dev"'
+      variables:
+        REGISTRY_URL: 'eu.gcr.io'
+        REGISTRY_PROJECT: 'bbsoft-dev'
+        REGION: 'europe-west1'
+        DEPLOY_GCP: "true"
+    - if: '$PROJECT == "dc-preprod"'
+      variables:
+        REGISTRY_URL: 'registry.prod.toloto'
+        REGISTRY_PROJECT: 'toloto'
+        DEPLOY_DC: "true"
+        NAMESPACE: "bbsoft"
+    - if: '$PROJECT == "dc-stage1"'
+      variables:
+        REGISTRY_URL: 'registry.prod.toloto'
+        REGISTRY_PROJECT: 'toloto'
+        DEPLOY_DC: "true"
+        NAMESPACE: "stage1"
+    - if: '$PROJECT == "dc-prod"'
+      variables:
+        REGISTRY_URL: 'registry.prod.toloto'
+        REGISTRY_PROJECT: 'toloto'
+        DEPLOY_DC: "true"
+        RELEASE: "true"
+
+before_script:
+  - ./deploy/docker-check-space.sh
+  - echo "BRANCH name is $BRANCH. SERVICE name is $SERVICE. PROJECT name is $PROJECT"
+
+stages:
+  - build-gcp
+  - build-dc
+  - deploy-gcp
+  - deploy-dc
+
+build-gcp:
+  stage: build-gcp
+  script:
+    - echo "BRANCH name is $BRANCH. SERVICE name is $SERVICE. PROJECT name is $PROJECT"
+    - cd build/$SERVICE
+    - make build  BRANCH=$BRANCH REGISTRY_URL=$REGISTRY_URL REGISTRY_PROJECT=$REGISTRY_PROJECT SERVICE=$SERVICE PROJECT=$PROJECT
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}"
+  rules:
+    - if: '$DEPLOY_GCP == "true"'
+  tags:
+    - wow-develop
+
+deploy-gcp:
+  stage: deploy-gcp
+  script:
+    - gcloud container clusters get-credentials $REGISTRY_PROJECT-gke --region $REGION --project $REGISTRY_PROJECT
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}" > deploy/images/${SERVICE}
+    - cat deploy/images/${SERVICE}
+    - helm template -f deploy/project/${PROJECT}/${SERVICE}/Chart.yaml deploy/
+    - helm upgrade --install $SERVICE -f deploy/project/${PROJECT}/${SERVICE}/Chart.yaml  deploy/
+    - ./deploy/check.sh $SERVICE $PROJECT
+  tags:
+    - wow-develop
+  rules:
+    - if: '$RELEASE == "true" && $DEPLOY_GCP == "true"'
+      when: manual
+    - if: '$DEPLOY_GCP == "true"'
+      when: on_success  
+
+build-dc:
+  stage: build-dc
+  script:
+    - cd build/$SERVICE
+    - ./build.sh $SERVICE $PROJECT $BRANCH $REGISTRY_PROJECT $REGISTRY_URL
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${SERVICE})"
+  rules:
+    - if: '$DEPLOY_DC == "true"'
+  artifacts:
+    paths:
+      - build/${SERVICE}/ci_commit_sha-${SERVICE}
+  tags:
+    - office
+
+deploy-dc:
+  stage: deploy-dc
+  script:
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}-$(cat build/${SERVICE}/ci_commit_sha-${SERVICE})" > deploy/images/${SERVICE}
+    - cat deploy/images/${SERVICE}
+    - export KUBECONFIG=~/.kube/$PROJECT
+    - kubectl get no && kubectl config current-context
+    - helm template -f deploy/project/${PROJECT}/${SERVICE}/Chart.yaml deploy/
+    - helm upgrade --install $SERVICE -n $NAMESPACE -f deploy/project/${PROJECT}/${SERVICE}/Chart.yaml  deploy/
+    - kubectl rollout  status -n $NAMESPACE  $(kubectl get deployments.apps  -n $NAMESPACE  -l name=${SERVICE} -o name) --timeout=180s
+  tags:
+    - office
+  rules:
+    - if: '$RELEASE == "true" && $DEPLOY_DC == "true"'
+      when: manual
+    - if: '$DEPLOY_DC == "true"'
+      when: on_success  

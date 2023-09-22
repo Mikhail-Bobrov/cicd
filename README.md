@@ -1,5 +1,5 @@
 current available projects -----   dc-preprod    -----     gcp-dev   
-current available services -----   api-gateway,analytics,chat-bot,bbsoft-client,dwh------
+current available services -----   api-gateway,analytics,chat-bot,bbsoft-client,dwh,platform,backoffice,application------ 
 
 
 Mini instruction for deploy
@@ -23,7 +23,7 @@ by the end deploy should be look like
 2)Press Run pipeline
 3)Set 3 env (example)
 PROJECT      gcp-dev
-SERVICE      unity-games
+SERVICE      unity-games   or another application from dictionary "current available services" 
 BRANCH       dev
 
 
@@ -51,5 +51,5 @@ BRANCH - соответственно бранча, с которой мы хо�
 2)Жмем Run pipline
 3)Выбираем 3 энва
 PROJECT      gcp-dev
-SERVICE      unity-games
+SERVICE      unity-games или любые другие сервисы из списка выше - current available services 
 BRANCH       dev

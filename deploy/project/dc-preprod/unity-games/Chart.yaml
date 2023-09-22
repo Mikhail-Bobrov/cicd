@@ -1,0 +1,52 @@
+name: unity-games
+imagename: unity-games
+namespace: bbsoft
+
+
+service:
+  type: ClusterIP
+  port: 3000
+
+
+deployment:
+  replica: 1
+  imagePullSecrets:
+    - docker-registry-secret
+  probe:
+    livenessProbe:
+      enable: true
+      initialDelaySeconds: 15
+      probeType: tcp
+      tcp:
+        port: 3000
+    readinessProbe:
+      enable: true
+      initialDelaySeconds: 15
+      probeType: tcp
+      tcp:
+        port: 3000
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1Gi
+      ephemeral_storage: 512Mi
+    limits:
+      cpu: "1"
+      ephemeral_storage: 1Gi
+      memory: 2Gi
+  restartPolicy: Always
+
+
+ingress:
+  enable: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+  - host: unity-games-preprod.bbsoft.by
+    paths:
+      - path: /
+        pathType: Prefix
+
+
+hpa:
+  enable: false
