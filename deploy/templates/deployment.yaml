@@ -16,10 +16,16 @@ spec:
   strategy:
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 1
+      maxUnavailable: {{ .Values.deployment.strategy.maxUnavailable }}
     type: RollingUpdate
   template:
     metadata:
+      {{- if .Values.deployment.monitoring.enable }}
+      annotations:
+        prometheus.io.default/scrape: "true"
+        prometheus.io/metric_path: {{ .Values.deployment.monitoring.path }}
+        prometheus.io/port: {{ .Values.deployment.monitoring.port | quote }}
+      {{- end }}
       labels:
         app: {{ .Values.name }}
         name: {{ .Values.imagename }}
@@ -27,14 +33,15 @@ spec:
       {{- if .Values.deployment.podAntiAffinity }}
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - {{ .Values.name }}
-            topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: {{ .Values.name }}
+                namespaces:
+                  - default
+                topologyKey: kubernetes.io/hostname
+              weight: 10
       {{- end }}
       containers:
       - image: {{ .Files.Get (printf "%s/%s" .Values.imagedir .Values.imagename  ) | trim | default "defaultimage" }}

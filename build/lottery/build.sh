@@ -27,8 +27,10 @@ cat ../ci_commit_sha-${PROJECT}
 
 ./gradlew build -x test
 cd ..
-docker build --build-arg JAVA_VERSION="${JAVA_VERSION}" -t "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})" .
-docker push "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
+docker build --build-arg JAVA_VERSION="${JAVA_VERSION}" -t "${REGISTRY_URL}/${REGISTRY_PROJECT}/application:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})" -f Dockerfile-app .
+docker push "${REGISTRY_URL}/${REGISTRY_PROJECT}/application:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
+docker build --build-arg JAVA_VERSION="${JAVA_VERSION}" -t "${REGISTRY_URL}/${REGISTRY_PROJECT}/backoffice:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})" -f Dockerfile-backoffice .
+docker push "${REGISTRY_URL}/${REGISTRY_PROJECT}/backoffice:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
 if [[ $PROJECT == "application" || $PROJECT == "backoffice" ]]; then
     rm -rf default
 else

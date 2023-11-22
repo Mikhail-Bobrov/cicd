@@ -10,6 +10,12 @@ service:
 
 
 deployment:
+  strategy:
+    maxUnavailable: 1
+  monitoring:
+    enable: false
+    path: /actuator/prometheus
+    port: "8080"
   podAntiAffinity: false
   replicas: 1
   imagePullPolicy: IfNotPresent
@@ -39,9 +45,9 @@ deployment:
       probeType: http
       http:
         path: /actuator/health/liveness   # random path
-        port: {}   # default service port
+        port: {}   # default - service port
       tcp:
-        port: {}   # default service port
+        port: {}   # default - service port
   resources:
     requests:
       #cpu: 10m

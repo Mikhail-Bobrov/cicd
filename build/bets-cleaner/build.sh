@@ -2,7 +2,7 @@
 
 set -e
 
-GIT_URL=git@git.:default/chat-bot.git
+GIT_URL=git@git.:default/bets-cleaner.git
 ENV=$2
 BRANCH=$3
 REGISTRY_URL=$5

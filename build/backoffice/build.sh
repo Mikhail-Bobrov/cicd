@@ -2,35 +2,35 @@
 
 set -e
 
-GIT_URL=git@git.ridotto.by:lottery/lottery.git
-PROJECT=$2
+GIT_URL=git@git.:default/default.git
+ENV=$2
 BRANCH=$3
 REGISTRY_URL=$5
 REGISTRY_PROJECT=$4
-SERVICE=$1
-JAVA_VERSION=registry.ridotto.by/bbsoft/bbsoft-ci:zulu-openjdk14
+PROJECT=$1
+JAVA_VERSION=registry./bbsoft/bbsoft-ci:zulu-openjdk14
 
-if [ -d "$SERVICE" ]; then
-    rm -rf "$SERVICE"
+if [ -d "$PROJECT" ]; then
+    rm -rf "$PROJECT"
 fi
-echo "$SERVICE - service $PROJECT - project $BRANCH - branch"
+echo "$PROJECT - service $ENV - project $BRANCH - branch"
 git clone $GIT_URL -b $BRANCH
 
-if [[ $SERVICE == "application" || $SERVICE == "backoffice" ]]; then
+if [[ $PROJECT == "application" || $PROJECT == "backoffice" ]]; then
     cd lotte*
 else
-    cd ${SERVICE}*
+    cd ${PROJECT}*
 fi
 
+git rev-parse --short HEAD > ../ci_commit_sha-${PROJECT}
+cat ../ci_commit_sha-${PROJECT}
 
-git rev-parse --short HEAD > ../ci_commit_sha-${SERVICE}
-cat ../ci_commit_sha-${SERVICE}
-
+./gradlew build -x test
 cd ..
-docker build --build-arg JAVA_VERSION="${JAVA_VERSION}" -t "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${SERVICE})" .
-docker push "${REGISTRY_URL}/${REGISTRY_PROJECT}/${SERVICE}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${SERVICE})"
-if [[ $SERVICE == "application" || $SERVICE == "backoffice" ]]; then
-    rm -rf lottery
+docker build --build-arg JAVA_VERSION="${JAVA_VERSION}" -t "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})" .
+docker push "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
+if [[ $PROJECT == "application" || $PROJECT == "backoffice" ]]; then
+    rm -rf default
 else
-    rm -rf "$SERVICE"
+    rm -rf "$PROJECT"
 fi

@@ -1,9 +1,9 @@
 variables:
   REGISTRY_URL: 'default.registry'
-  REGISTRY_PROJECT: 'lottery'
+  REGISTRY_PROJECT: 'default'
   REGION: 'europe-west1'
   BRANCH: 'main'
-  SERVICE: 'bbsoft-client'
+  SERVICE: 'client'
   DEPLOY_GCP: 'false'
   DEPLOY_DC: 'false'
   RELEASE: "false"
@@ -15,25 +15,25 @@ workflow:
     - if: '$PROJECT == "gcp-dev"'
       variables:
         REGISTRY_URL: 'eu.gcr.io'
-        REGISTRY_PROJECT: 'bbsoft-dev'
+        REGISTRY_PROJECT: 'dev'
         REGION: 'europe-west1'
         DEPLOY_GCP: "true"
     - if: '$PROJECT == "dc-preprod"'
       variables:
-        REGISTRY_URL: 'registry.prod.toloto'
-        REGISTRY_PROJECT: 'toloto'
+        REGISTRY_URL: 'registry.prod.name'
+        REGISTRY_PROJECT: 'name'
         DEPLOY_DC: "true"
         NAMESPACE: "bbsoft"
     - if: '$PROJECT == "dc-stage1"'
       variables:
-        REGISTRY_URL: 'registry.prod.toloto'
-        REGISTRY_PROJECT: 'toloto'
+        REGISTRY_URL: 'registry.prod.name'
+        REGISTRY_PROJECT: 'name'
         DEPLOY_DC: "true"
         NAMESPACE: "stage1"
     - if: '$PROJECT == "dc-prod"'
       variables:
-        REGISTRY_URL: 'registry.prod.toloto'
-        REGISTRY_PROJECT: 'toloto'
+        REGISTRY_URL: 'registry.prod.name'
+        REGISTRY_PROJECT: 'name'
         DEPLOY_DC: "true"
         RELEASE: "true"
 
@@ -74,7 +74,7 @@ deploy-gcp:
     - if: '$RELEASE == "true" && $DEPLOY_GCP == "true"'
       when: manual
     - if: '$DEPLOY_GCP == "true"'
-      when: on_success  
+      when: on_success
 
 build-dc:
   stage: build-dc
