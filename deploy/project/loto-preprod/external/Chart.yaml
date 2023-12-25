@@ -1,0 +1,66 @@
+name: external-integrations
+imagename: external
+namespace: lottery
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: external-integrations
+    port: 8123
+
+
+deployment:
+  replicas: 1
+  monitoring:
+    enable: true
+  imagePullSecrets:
+    - docker-registry-secret
+  strategy:
+    maxUnavailable: 0
+  containers:
+  - name: external-integrations
+    imagename: external
+    port: 8123
+    probe:
+      livenessProbe:
+        enable: true
+        initialDelaySeconds: 120
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8123
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 30
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8123
+    resources:
+      requests:
+        cpu: "100m"
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    restartPolicy: Always
+    env: {}
+
+    envFromSecret:
+      DATASOURCE_ADDRESS:
+        postgres-lottery-main-write: host
+      DATASOURCE_PORT:
+        postgres-lottery-main-write: port
+      DATASOURCE_USERNAME:
+        postgres-lottery-main-admin: superuser
+      DATASOURCE_PASSWORD:
+        postgres-lottery-main-admin: superuser-password
+      KAFKA_ADDRESS:
+        kafka-lottery-main-write: address
+
+ingress:
+  enable: false
+
+hpa:
+  enable: false

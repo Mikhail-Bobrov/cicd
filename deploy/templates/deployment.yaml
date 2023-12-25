@@ -1,0 +1,190 @@
+{{- $imageDir := .Values.imagedir -}}
+{{- $servicePort := index .Values.service.multiport 0 -}}
+{{- $volumeName := .Values.deployment.volumes }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.name }}
+    name: {{ .Values.imagename }}
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  progressDeadlineSeconds: 300
+  replicas: {{ .Values.deployment.replicas }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: {{ .Values.deployment.strategy.maxUnavailable }}
+    type: RollingUpdate
+  template:
+    metadata:
+      {{- if .Values.deployment.monitoring.enable }}
+      annotations:
+        prometheus.io.lottery/scrape: "true"
+        prometheus.io/metric_path: {{ .Values.deployment.monitoring.path }}
+        prometheus.io/port: {{ .Values.deployment.monitoring.port | quote }}
+      {{- end }}
+      labels:
+        app: {{ .Values.name }}
+        name: {{ .Values.imagename }}
+    spec:
+      {{- if .Values.deployment.podAntiAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - {{ .Values.name }}
+                topologyKey: kubernetes.io/hostname
+              weight: 50
+      {{- end }}
+      containers:
+      {{- if .Values.deployment.containers }}
+      {{- range .Values.deployment.containers }}
+      {{- if .customImage }}
+      - image: {{ .customImage }}
+      {{- else }}
+      - image: {{ $.Files.Get  (printf "%s/%s" $imageDir .imagename  )  | trim | default "ass:$300-bucks" }}
+      {{- end }}
+        {{- if .command }}
+        command:
+        {{- toYaml .command | nindent 8 }}
+        {{- end }}
+      {{- if or .env .envFromSecret }}
+        env:
+      {{- range $key, $value := .env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+      {{- end }}
+      {{- with .envFromSecret }}
+      {{- range $name, $secrets := . }}
+        - name: {{ $name }}
+          {{- range $key, $val := $secrets }}
+          valueFrom:
+            secretKeyRef:
+                name: {{ $key }}
+                key: {{ $val }}
+          {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+        imagePullPolicy: {{ .imagePullPolicy | default "IfNotPresent" }}
+        {{- if .volumeMounts }}
+        volumeMounts:
+          {{- range .volumeMounts }}
+          - name: {{ .name }}
+            mountPath: {{ .mountPath }}
+          {{- end }}
+        {{- end }}
+        name: {{ .name }}
+        ports:
+        - containerPort: {{ .port | default $servicePort.port }}
+          name: {{ printf "%.15s" .name }}
+          protocol: TCP
+        {{- if .probe.livenessProbe.enable }}
+        livenessProbe:
+        {{- if eq .probe.livenessProbe.probeType "tcp" }}
+        {{- with .probe.livenessProbe }}
+          initialDelaySeconds: {{ .initialDelaySeconds | default 120 }}
+          periodSeconds: {{ .periodSeconds | default 5 }}
+          successThreshold: {{ .successThreshold | default 1 }}
+          timeoutSeconds: {{ .timeoutSeconds | default 3 }}
+          failureThreshold: {{ .failureThreshold | default 5 }}
+          tcpSocket:
+            port: {{ .tcp.port  | default $servicePort.port }}
+        {{- end }}
+        {{- else if eq .probe.livenessProbe.probeType "http" }}
+        {{- with .probe.livenessProbe }}
+          httpGet:
+            path: {{ .http.path }}
+            port: {{ .http.port | default $servicePort.port }}
+            scheme: HTTP
+          initialDelaySeconds: {{ .initialDelaySeconds | default 120 }}
+          periodSeconds: {{ .periodSeconds | default 5 }}
+          successThreshold: {{ .successThreshold | default 1 }}
+          timeoutSeconds: {{ .timeoutSeconds | default 3 }}
+          failureThreshold: {{ .failureThreshold | default 5 }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if .probe.readinessProbe.enable }}
+        readinessProbe:
+        {{- if eq .probe.readinessProbe.probeType "tcp" }}
+        {{- with .probe.readinessProbe }}
+          initialDelaySeconds: {{ .initialDelaySeconds | default 120 }}
+          periodSeconds: {{ .periodSeconds | default 5 }}
+          successThreshold: {{ .successThreshold | default 1 }}
+          timeoutSeconds: {{ .timeoutSeconds | default 3 }}
+          failureThreshold: {{ .failureThreshold | default 5 }}
+          tcpSocket:
+            port: {{ .tcp.port | default $servicePort.port }}
+        {{- end }}
+        {{- else if eq .probe.readinessProbe.probeType "http" }}
+        {{- with .probe.readinessProbe }}
+          httpGet:
+            path: {{ .http.path }}
+            port: {{ .http.port | default $servicePort.port }}
+            scheme: HTTP
+          initialDelaySeconds: {{ .initialDelaySeconds | default 120 }}
+          periodSeconds: {{ .periodSeconds | default 5 }}
+          successThreshold: {{ .successThreshold | default 1 }}
+          timeoutSeconds: {{ .timeoutSeconds | default 3 }}
+          failureThreshold: {{ .failureThreshold | default 5 }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        resources:
+          {{- if .resources.requests }}
+          requests:
+            {{- if .resources.requests.cpu }}
+            cpu: {{ .resources.requests.cpu }}
+            {{- end }}
+            {{- if .resources.requests.memory }}
+            memory: {{ .resources.requests.memory }}
+            {{- end }}
+            {{- if .resources.requests.ephemeral_storage }}
+            ephemeral-storage: {{ .resources.requests.ephemeral_storage }}
+            {{- end }}
+          {{- end }}
+          {{- if .resources.limits }}
+          limits:
+            {{- if .resources.limits.cpu }}
+            cpu: {{ .resources.limits.cpu }}
+            {{- end }}
+            {{- if .resources.limits.memory }}
+            memory: {{ .resources.limits.memory }}
+            {{- end }}
+            {{- if .resources.limits.ephemeral_storage }}
+            ephemeral-storage: {{ .resources.limits.ephemeral_storage }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+      dnsPolicy: ClusterFirst
+      {{- if .Values.deployment.imagePullSecrets }}
+      imagePullSecrets:
+      {{- range .Values.deployment.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
+      {{- end }}
+      restartPolicy: {{ .Values.deployment.restartPolicy }}
+      {{- if .Values.deployment.volumes }}
+      volumes:
+      {{- range .Values.deployment.volumes }}
+      - name: {{ .name }}
+      {{- if eq .type "emptyDir" }}
+        emptyDir: {}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30
+      

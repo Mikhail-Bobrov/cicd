@@ -1,0 +1,129 @@
+name: api-gateway
+imagename: api-gateway
+namespace: lottery
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: api-gateway
+    port: 8080
+
+
+deployment:
+  strategy:
+    maxUnavailable: 0
+  podAntiAffinity: true
+  monitoring:
+    enable: true
+  replicas: 2
+  imagePullSecrets:
+    - docker-registry-preprod
+  volumes:
+    - type: emptyDir
+      name: dump
+    - type: emptyDir
+      name: data
+  containers:
+  - name: api-gateway
+    imagename: api-gateway
+    port: 8080
+    probe:
+      livenessProbe:
+        enable: true
+        probeType: http
+        http:
+          path: /actuator/health/liveness
+          port: 8080
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 10
+        probeType: http
+        http:
+          path: /actuator/health/readiness
+          port: 8080
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+        ephemeral_storage: 1Gi
+      limits:
+        cpu: 1
+        ephemeral_storage: 2560Mi
+        memory: 2560Mi
+    restartPolicy: Always
+    volumeMounts:
+      - mountPath: /dump
+        name: dump
+    env:
+      JAVA_TOOL_OPTIONS: '-XX:NativeMemoryTracking=summary -XX:InitialHeapSize=1536m -XX:MaxHeapSize=1536m -XX:ParallelGCThreads=2 -XX:CICompilerCount=2 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/dump/dump.hprof'
+    envFromSecret:
+      JWT_KEY:
+        lottery-jwt: private-key
+      DATASOURCE_BELLOTO_ADDRESS:
+        postgres-lottery-main-write: host
+      DATASOURCE_BELLOTO_PORT:
+        postgres-lottery-main-write: port
+      DATASOURCE_BELLOTO_USERNAME:
+        postgres-lottery-main-admin: superuser
+      DATASOURCE_BELLOTO_PASSWORD:
+        postgres-lottery-main-admin: superuser-password
+      KAFKA_ADDRESS:
+        kafka-lottery-main-write: address
+  - name: jvmdump
+    customImage: registry.preprod.kipod/infra/jvmdump:1.0.2
+    probe:
+      livenessProbe:
+        enable: false
+      readinessProbe:
+        enable: false
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral_storage: 5Gi
+      limits:
+        cpu: 500m
+        ephemeral_storage: 5Gi
+        memory: 512Mi
+    restartPolicy: Always
+    volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /dump
+        name: dump
+    env:
+        K8S_TMP: 'dump'
+        K8S_DATA: 'data'
+        S3_BUCKET: 'jvmdump'
+    envFromSecret:
+        S3_ENDPOINT:
+            s3-fast-secret: endpoint
+        S3_ACCESS_KEY:
+            s3-fast-secret: access-key
+        S3_SECRET_KEY:
+            s3-fast-secret: secret-key
+
+ingress:
+  enable: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Access-Control-Allow-Origin: $http_origin";
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: PUT, GET, POST, OPTIONS, DELETE, PATCH
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/server-snippet: if ($request_uri = /actuator/prometheus) { return 403; }
+
+  hosts:
+  - host: api-gateway-preprod.belbet.by
+    paths:
+      - path: /
+        pathType: ImplementationSpecific
+
+
+hpa:
+  enable: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 50

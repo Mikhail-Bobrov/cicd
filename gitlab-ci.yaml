@@ -1,0 +1,140 @@
+variables:
+  REGISTRY_URL: 'default.registry'
+  REGISTRY_PROJECT: 'lottery'
+  REGION: 'europe-west1'
+  BRANCH: 'main'
+  PROJECT: 'default'
+  DEPLOY_GCP: 'false'
+  DEPLOY_OFFICE: 'false'
+  RELEASE: "false"
+
+workflow:
+  name: '$ENV $BRANCH $PROJECT $RUN_TEST'
+  rules:
+    - if: '$ENV == "lottery-qa"'
+      variables:
+        REGISTRY_URL: 'eu.gcr.io'
+        REGISTRY_PROJECT: 'lottery-qa'
+        REGION: 'europe-west1'
+        DEPLOY_GCP: "true"
+        NAMESPACE: "default"
+    - if: '$ENV == "loto-preprod"'
+      variables:
+        REGISTRY_URL: 'registry.preprod.kipod'
+        REGISTRY_PROJECT: 'belbet'
+        DEPLOY_OFFICE: "true"
+        NAMESPACE: "lottery"
+    - if: '$ENV == "loto-prod"'
+      variables:
+        REGISTRY_URL: 'registry.prod.loto'
+        REGISTRY_PROJECT: 'lottery'
+        DEPLOY_OFFICE: "true"
+        NAMESPACE: "lottery"
+        RELEASE: "true"
+    - if: '$ENV == "lottery-bb-test"'
+      variables:
+        REGISTRY_URL: 'eu.gcr.io'
+        REGISTRY_PROJECT: 'lottery-bb-test'
+        REGION: 'europe-west1'
+        DEPLOY_GCP: "true"
+        NAMESPACE: "default"
+    - if: '$ENV == "lottery-develop"'
+      variables:
+        REGISTRY_URL: 'eu.gcr.io'
+        REGISTRY_PROJECT: 'lottery-develop'
+        REGION: 'europe-west1'
+        DEPLOY_GCP: "true"
+        NAMESPACE: "default"
+    - if: '$ENV == "loto-marketing"'
+      variables:
+        REGISTRY_URL: 'eu.gcr.io'
+        REGISTRY_PROJECT: 'loto-marketing'
+        REGION: 'europe-west1'
+        DEPLOY_GCP: "true"
+        NAMESPACE: "default"
+
+before_script:
+  - ./deploy/docker-check-space.sh
+  - echo "BRANCH name is $BRANCH. SERVICE name is $PROJECT. PROJECT name is $ENV"
+
+stages:
+  - build-gcp
+  - build-dc
+  - deploy-gcp
+  - deploy-dc
+
+build-gcp:
+  stage: build-gcp
+  script:
+    - cd build/${PROJECT}
+    - ./build.sh $PROJECT $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
+  rules:
+    - if: '$DEPLOY_GCP == "true"'
+    - when: never
+  artifacts:
+    paths:
+      - build/${PROJECT}/ci_commit_sha-${PROJECT}
+  tags:
+    - wow-develop
+
+deploy-gcp:
+  stage: deploy-gcp
+  dependencies:
+    - build-gcp
+  script:
+    - if [ $PROJECT == lottery ] ; then ./deploy/lottery-deploy.sh $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL $NAMESPACE $DEPLOY_GCP $REGION && exit 0; fi
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat build/${PROJECT}/ci_commit_sha-${PROJECT})" > deploy/images/${PROJECT}
+    - cat deploy/images/${PROJECT}
+    - gcloud container clusters get-credentials $REGISTRY_PROJECT-gke --region $REGION --project $REGISTRY_PROJECT
+    #- kubectl get no
+    #- helm template -f deploy/project/${ENV}/${PROJECT}/Chart.yaml deploy/
+    - helm upgrade --install $PROJECT -n $NAMESPACE -f deploy/project/${ENV}/${PROJECT}/Chart.yaml  deploy/
+    - kubectl rollout  status -n $NAMESPACE  $(kubectl get deployments.apps  -n $NAMESPACE  -l name=${PROJECT} -o name) --timeout=180s
+  tags:
+    - wow-develop
+  rules:
+    - if: '$RELEASE == "true" && $DEPLOY_GCP == "true"'
+      when: manual
+    - if: '$DEPLOY_GCP == "true"'
+      when: on_success
+    - when: never
+
+build-dc:
+  stage: build-dc
+  script:
+    - cd build/${PROJECT}
+    - ./build.sh $PROJECT $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ci_commit_sha-${PROJECT})"
+    - ./../../deploy/git-release.sh  $PROJECT $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL $RELEASE
+  rules:
+    - if: '$DEPLOY_OFFICE == "true"'
+    - when: never
+  artifacts:
+    paths:
+      - build/${PROJECT}/ci_commit_sha-${PROJECT}
+  tags:
+    - office
+
+deploy-dc:
+  stage: deploy-dc
+  dependencies:
+    - build-dc
+  script:
+    - if [ $PROJECT == lottery ] ; then ./deploy/lottery-deploy.sh $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL $NAMESPACE $DEPLOY_GCP $REGION && exit 0; fi
+    - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat build/${PROJECT}/ci_commit_sha-${PROJECT})" > deploy/images/${PROJECT}
+    - cat deploy/images/${PROJECT}
+    - export KUBECONFIG=~/.kube/$ENV
+    #- kubectl get no && kubectl config current-context
+    #- helm template -f deploy/project/${ENV}/${PROJECT}/Chart.yaml deploy/
+    - helm upgrade --install $PROJECT -n $NAMESPACE -f deploy/project/${ENV}/${PROJECT}/Chart.yaml  deploy/
+    - kubectl rollout  status -n $NAMESPACE  $(kubectl get deployments.apps  -n $NAMESPACE  -l name=${PROJECT} -o name) --timeout=180s
+  tags:
+    - office
+  rules:
+    - if: '$RELEASE == "true" && $DEPLOY_OFFICE == "true"'
+      when: manual
+    - if: '$DEPLOY_OFFICE == "true"'
+      when: on_success
+    - when: never
+

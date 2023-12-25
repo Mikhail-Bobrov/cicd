@@ -1,0 +1,124 @@
+name: default-name
+namespace: default
+imagedir: images
+imagename: default-service-name
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: default
+    port: 8080
+  #- name: another-port
+  #  port: 80
+
+
+
+deployment:
+  podAntiAffinity: false
+  monitoring:
+    enable: false
+    path: /metrics
+    port: 9090
+  volumes: {}
+  # - name: static-volume
+  #   type: emptyDir
+  # - name: shared-static
+  #   type: emptyDir
+  # - name: shared-media
+  #   type: emptyDir
+  replicas: 1
+  strategy:
+    maxUnavailable: 1
+  imagePullSecrets: {}
+  ##- name-default-secret
+  restartPolicy: Always
+  containers:
+  - name: default-1
+    port: 80
+    imagename: default-1
+    imagePullPolicy: IfNotPresent
+    command: {}
+    # - sh
+    # - -c
+    # - |
+    #   python3 manage.py migrate
+    #   python3 manage.py collectstatic --no-input --clear
+    #   gunicorn app.wsgi:application --bind 0.0.0.0:8080
+    probe:
+      livenessProbe:
+        enable: false
+        probeType: http  ### also you can use ---tcp---
+        #initialDelaySeconds: 120
+        #periodSeconds: 5
+        #successThreshold: 1
+        #timeoutSeconds: 3
+        #failureThreshold: 5
+        http:
+          path: /actuator/health/liveness   # random path
+          port: {}   # default service port
+        tcp:
+          port: {}  # default service port
+      readinessProbe:
+        enable: false
+        #initialDelaySeconds: 120
+        #periodSeconds: 5
+        #successThreshold: 1
+        #timeoutSeconds: 3
+        #failureThreshold: 5
+        probeType: http
+        http:
+          path: /actuator/health/liveness   # random path
+          port: {}   # default service port
+        tcp:
+          port: {}   # default service port
+    volumeMounts: {}
+     # - name: shared-static
+     #   mountPath: /home/app/web/staticfiles
+     # - name: shared-media
+     #   mountPath: /home/app/web/mediafiles
+    resources:
+      requests:
+        #cpu: 10m
+        #memory: 512Mi
+        #ephemeral_storage: 512Mi
+      limits:
+        cpu: "500m"
+        #ephemeral_storage: 1Gi
+        memory: 1Gi
+    env: {}
+     # key: value
+    envFromSecret: {}
+     # ENVNAME:
+     #   secretName: keyInThisSecret
+
+    # Second container example:
+  #- name: default-2
+  #  imagename: default-2
+  #  port: 8080
+  #  imagePullPolicy: IfNotPresent
+  #  customImage: nginx:latest
+
+
+ingress:
+  enable: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  tls: {}
+#    - hosts:
+#     - dev.default.by
+#      secretName: default-ssl-secret
+  hosts:
+  - host: dev.default.by
+    paths:
+      - path: /
+        # name: custom-service
+        # port: 3001
+        pathType: Prefix
+
+
+hpa:
+  enable: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80

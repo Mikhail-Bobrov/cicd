@@ -1,0 +1,68 @@
+name: application
+imagename: application
+namespace: lottery
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: application
+    port: 8080
+
+
+deployment:
+  replicas: 3
+  monitoring:
+    enable: true
+  imagePullSecrets:
+    - docker-registry-preprod
+  containers:
+  - name: application
+    imagename: application
+    port: 8080
+    probe:
+      livenessProbe:
+        enable: true
+        initialDelaySeconds: 300
+        probeType: http
+        http:
+          path: /actuator/health/liveness
+          port: 8080
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 10
+        probeType: http
+        http:
+          path: /actuator/health/readiness
+          port: 8080
+    resources:
+      requests:
+        cpu: 1
+        memory: 2560Mi
+      limits:
+        cpu: 2
+        memory: 3Gi
+    restartPolicy: Always
+    env: {}
+
+    envFromSecret: {}
+
+ingress:
+  enable: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/server-snippet: if ($request_uri = /actuator/prometheus) { return 403; }
+
+  hosts:
+  - host: game-api-preprod.belbet.by
+    paths:
+      - path: /
+        pathType: ImplementationSpecific
+
+
+
+hpa:
+  enable: true
+  minReplicas: 3
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70

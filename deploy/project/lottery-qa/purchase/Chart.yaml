@@ -1,0 +1,63 @@
+name: purchase-service
+imagename: purchase
+namespace: default
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: purchase
+    port: 8080
+
+
+deployment:
+  replicas: 1
+  imagePullSecrets:
+    - gcr-json-key
+  containers:
+  - name: purchase
+    imagename: purchase
+    port: 8080
+    probe:
+      livenessProbe:
+        enable: true
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8080
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 15
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    restartPolicy: Always
+    env: {}
+    envFromSecret:
+      JWT_KEY:
+        jwt-qa: jwt-key
+      DATASOURCE_BELLOTO_ADDRESS:
+        postgres-default-qa-write: host
+      DATASOURCE_BELLOTO_PORT:
+        postgres-default-qa-write: port
+      DATASOURCE_BELLOTO_USERNAME:
+        postgres-default-qa-admin: superuser
+      DATASOURCE_BELLOTO_PASSWORD:
+        postgres-default-qa-admin: superuser-password
+      KAFKA_ADDRESS:
+        kafka-default-qa-write: host
+
+ingress:
+  enable: false
+
+
+hpa:
+  enable: false
