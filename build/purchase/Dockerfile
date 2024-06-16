@@ -9,6 +9,6 @@ FROM ${JAVA_VERSION}
 RUN mkdir /app
 WORKDIR /app
 
-COPY --from=BUILDER /root/purchase-service/belbet/build/libs/ /app/
+COPY --from=BUILDER /root/libs/ /app/
 
 CMD ["bash", "-c", "java --enable-preview -XX:MinRAMPercentage=70 -XX:MaxRAMPercentage=70 -jar purchase-*.jar" ]

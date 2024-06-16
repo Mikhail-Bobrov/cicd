@@ -12,7 +12,7 @@ RELEASE=$6
 
 if [ $RELEASE == "true" ]; then
    git clone $GIT_URL -b master
-   cd helm-belbet
+   cd git
    git status
    echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat ../ci_commit_sha-${PROJECT})" > deploy/images/${PROJECT}
    cat deploy/images/${PROJECT}

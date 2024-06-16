@@ -53,7 +53,7 @@ deployment:
         cpu: "1"
         ephemeral-storage: "512Mi"
     env:
-      SECURITY_CORS_ORIGINS: "*, https://game-api-preprod.belbet.by, https://api-gateway-preprod.belbet.by, https://static-preprod.belbet.by"
+      SECURITY_CORS_ORIGINS: "*"
     envFromSecret: {}
 
 ingress:
