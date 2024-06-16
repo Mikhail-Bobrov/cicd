@@ -1,0 +1,61 @@
+name: external-integrations
+imagename: external
+namespace: default
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: external-integrations
+    port: 8123
+
+
+deployment:
+  replicas: 1
+  imagePullSecrets:
+    - gcr-json-key
+  containers:
+  - name: external-integrations
+    imagename: external
+    port: 8123
+    probe:
+      livenessProbe:
+        enable: true
+        initialDelaySeconds: 120
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8123
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 30
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8123
+    resources:
+      requests:
+        cpu: "100m"
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    restartPolicy: Always
+    env: {}
+    envFromSecret:
+      DATASOURCE_ADDRESS:
+        postgres-default-qa-write: host
+      DATASOURCE_PORT:
+        postgres-default-qa-write: port
+      DATASOURCE_USERNAME:
+        postgres-default-qa-write: user
+      DATASOURCE_PASSWORD:
+        postgres-default-qa-write: password
+      KAFKA_ADDRESS:
+        kafka-default-qa-write: host
+
+ingress:
+  enable: false
+
+hpa:
+  enable: false

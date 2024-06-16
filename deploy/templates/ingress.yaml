@@ -1,6 +1,6 @@
 {{- if .Values.ingress.enable }}
 {{- $svcName := .Values.name -}}
-{{- $svcPort := .Values.service.port -}}
+{{- $servicePort := index .Values.service.multiport 0 -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -21,9 +21,9 @@ spec:
       {{- range .paths }}
       - backend:
           service:
-            name: {{ $svcName -}}-svc
+            name: {{ .name | default (printf "%s-%s" $svcName "svc")}}
             port:
-              number: {{ $svcPort }}
+              number: {{ .port | default $servicePort.port }}
         path: {{ .path }}
         pathType: {{ .pathType }}
       {{- end }}

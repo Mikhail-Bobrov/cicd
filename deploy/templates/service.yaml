@@ -7,10 +7,12 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   ports:
-  - port: {{ .Values.service.port }}
+  {{- range .Values.service.multiport }}
+  - port: {{ .port }}
     protocol: TCP
-    targetPort: {{ .Values.service.port }}
-    name: {{ .Values.name }}
+    targetPort: {{ .port }}
+    name: {{ .name }}
+  {{- end }}
   selector:
     app: {{ .Values.name }}
   type: {{ .Values.service.type }}

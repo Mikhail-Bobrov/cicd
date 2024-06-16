@@ -4,8 +4,8 @@ FROM ${JAVA_VERSION}
 RUN mkdir -p /lwo && mkdir -p /wrapper && mkdir -p /app
 WORKDIR /app
 
-COPY default/application/build/libs/* /app
-COPY default/encryption/src/main/native/libs/* /lwo/
-COPY default/encryption/src/main/native/libLwoWrapper.so /wrapper/
+COPY lottery/application/build/libs/* /app
+COPY lottery/encryption/src/main/native/libs/* /lwo/
+COPY lottery/encryption/src/main/native/libLwoWrapper.so /wrapper/
 
 CMD ["bash", "-c", "java --enable-preview -XX:NativeMemoryTracking=summary -XX:MinRAMPercentage=70 -XX:MaxRAMPercentage=70 -jar application*.jar"]

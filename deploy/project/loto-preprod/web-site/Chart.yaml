@@ -1,0 +1,98 @@
+name: web-site
+namespace: lottery
+imagedir: images
+imagename: web-site
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: web-site
+    port: 3000
+
+deployment:
+  podAntiAffinity: false
+  replicas: 2
+  strategy:
+    maxUnavailable: 1
+  imagePullSecrets: 
+  - docker-registry-secret
+  restartPolicy: Always
+  containers:
+  - name: web-site
+    port: 3000
+    imagename: web-site
+    imagePullPolicy: IfNotPresent
+    probe:
+      livenessProbe:
+        enable: true
+        probeType: tcp
+        initialDelaySeconds: 15
+        periodSeconds: 20
+        successThreshold: 1
+        timeoutSeconds: 3
+        failureThreshold: 5
+        tcp:
+          port: 3000
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+        failureThreshold: 5
+        probeType: tcp
+        tcp:
+          port: 3000
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+        ephemeral-storage: "128Mi"
+      limits:
+        memory: "1024Mi"
+        cpu: "1"
+        ephemeral-storage: "512Mi"
+    env:
+      SECURITY_CORS_ORIGINS: "*, https://game-api-preprod.belbet.by, https://api-gateway-preprod.belbet.by, https://static-preprod.belbet.by"
+    envFromSecret: {}
+
+ingress:
+  enable: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 3m
+  hosts:
+    - host: mytestingress
+      paths:
+        - path: /
+          pathType: Prefix
+          name: web-site-svc
+          port: 3000
+        - path: /admin
+          pathType: Prefix
+          name: web-site-api-svc
+          port: 8080
+        - path: /api
+          pathType: Prefix
+          name: web-site-api-svc
+          port: 8080
+        - path: /staticfiles
+          pathType: Prefix
+          name: web-site-api-svc
+          port: 80
+        - path: /mediafiles
+          pathType: Prefix
+          name: web-site-api-svc
+          port: 80
+  tls: {}
+
+hpa:
+  enable: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 75

@@ -1,0 +1,85 @@
+name: config-service
+imagename: config-service
+namespace: lottery
+
+
+service:
+  type: ClusterIP
+  multiport: 
+  - name: config-service
+    port: 8080
+
+
+deployment:
+  replicas: 1
+  imagePullSecrets:
+    - docker-registry-preprod
+  containers:
+  - name: config-service
+    imagename: config-service
+    port: 8080
+    probe:
+      livenessProbe:
+        enable: true
+        initialDelaySeconds: 120
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8080
+      readinessProbe:
+        enable: true
+        initialDelaySeconds: 30
+        probeType: http
+        http:
+          path: /actuator/health
+          port: 8080
+    resources:
+      requests:
+        cpu: "500m"
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    restartPolicy: Always
+    env: {}
+
+    envFromSecret:
+      JWT_KEY:
+        lottery-jwt: private-key
+      DATASOURCE_GATEKEEPER_URL:
+        config-service-db: dbgatekeeper
+      DATASOURCE_BELLOTO_URL:
+        config-service-db: dbread
+      DATASOURCE_BELLOTO_USERNAME:
+        postgres-lottery-main-write: user
+      DATASOURCE_BELLOTO_PASSWORD:
+        postgres-lottery-main-write: password
+      DATASOURCE_MAIN-READ_URL:
+        config-service-db: dbread
+      DATASOURCE_MAIN-READ_USERNAME:
+        postgres-lottery-main-admin: superuser
+      DATASOURCE_MAIN-READ_PASSWORD:
+        postgres-lottery-main-admin: superuser-password
+      DATASOURCE_CONFIG-SERVICE_URL:
+        config-service-db: dbgatekeeper
+      DATASOURCE_CONFIG-SERVICE_USERNAME:
+        postgres-lottery-gatekeeper-write: user
+      DATASOURCE_CONFIG-SERVICE_PASSWORD:
+        postgres-lottery-gatekeeper-write: password
+      DATASOURCE_GATEKEEPER_USERNAME:
+        postgres-lottery-gatekeeper-write: user
+      DATASOURCE_GATEKEEPER_PASSWORD:
+        postgres-lottery-gatekeeper-write: password
+      DATASOURCE_GATEKEEPER-REPORT_USERNAME:
+        postgres-lottery-gatekeeper-write: user
+      DATASOURCE_GATEKEEPER-REPORT_PASSWORD:
+        postgres-lottery-gatekeeper-write: password
+      KAFKA_ADDRESS:
+        kafka-lottery-main-write: address
+
+
+ingress:
+  enable: false
+
+hpa:
+  enable: false

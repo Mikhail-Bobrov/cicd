@@ -8,6 +8,8 @@ FROM ${JAVA_VERSION}
 
 RUN mkdir /app
 WORKDIR /app
+RUN apt-get update && apt-get install -y curl net-tools vim \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=BUILDER /root/api-gateway/build/libs/ /app/
 

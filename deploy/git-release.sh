@@ -2,7 +2,7 @@
 
 set -e
 
-GIT_URL=git@git.:infra/helm-belbet.git
+GIT_URL=git@git
 ENV=$2
 BRANCH=$3
 REGISTRY_URL=$5

@@ -1,0 +1,82 @@
+stages:
+  - unit-test
+  - build-deploy
+
+default:
+  image: custom image name
+
+unit-test-frontend:
+  stage: unit-test
+  only:
+    changes:
+      - frontend/**/*
+  script:
+    - docker compose -f dev/frontend/docker-compose.unit-test.yaml up --build --force-recreate --exit-code-from unit-test
+  after_script:
+    - docker cp frontend-unit-test:/home/chrome/app/artifacts/tests_report.xml $CI_PROJECT_DIR/frontend/tests_report.xml || true
+    - docker compose -f dev/frontend/docker-compose.unit-test.yaml down --remove-orphans --rmi local --volumes
+  tags:
+    - office
+  artifacts:
+    when: on_failure
+    paths:
+      - frontend/tests_report.xml
+    reports:
+      junit: frontend/tests_report.xml
+
+unit-test-backend:
+  stage: unit-test
+  only:
+    changes:
+      - backend/**/*
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - mv secrets-folder/env.local* dev/backend/
+    - docker compose -f dev/backend/docker-compose.unit-test.yaml up --build --force-recreate --exit-code-from unit-test
+  after_script:
+    - docker cp backend-unit-test:/app/artifacts/tests_report.xml $CI_PROJECT_DIR/acopbackend/tests_report.xml || true
+    - docker compose -f dev/backend/docker-compose.unit-test.yaml down --remove-orphans --rmi local --volumes
+  tags:
+    - office
+  artifacts:
+    when: on_failure
+    paths:
+      - backend/tests_report.xml
+    reports:
+      junit: backend/tests_report.xml
+
+build-deploy-dev:
+  stage: build-deploy
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - develop
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - mv secrets-folder/env.dev.front frontend/.env
+    - REPO_FRONT="${CI_REGISTRY}/${PATH}:dev-${CI_COMMIT_SHORT_SHA}"
+    - REPO_BACK="${CI_REGISTRY}/${PATH}:dev-${CI_COMMIT_SHORT_SHA}"
+    - docker pull "${CI_REGISTRY}/${PATH}/frontend:latest" || true
+    - docker pull "${CI_REGISTRY}/${PATH}/backend:latest" || true
+    - echo "TAG_FRONTEND=${REPO_FRONT}" > .env
+    - echo "TAG_BACKEND=${REPO_BACK}" >> .env
+    - docker build  --target deploy --cache-from  ${CI_REGISTRY}/${PATH}/frontend:latest -t $REPO_FRONT frontend
+    - docker build  --target deploy --cache-from  ${CI_REGISTRY}/${PATH}/backend:latest -t $REPO_BACK backend
+    - docker push "$REPO_FRONT"
+    - docker push "$REPO_BACK"
+    - docker push "${CI_REGISTRY}/${PATH}/frontend:latest"
+    - docker push "${CI_REGISTRY}/${PATH}/backend:latest"
+    - docker rmi $REPO_FRONT $REPO_BACK -f
+    - scp .env secrets-folder/env.dev* dev/docker-compose.yaml ${SSH_SERVER_ID_DEV}:/${PATH}
+    - ssh ${SSH_SERVER_ID_DEV} 'cd ${PATH} && docker-compose pull && docker-compose up -d'
+  tags:
+    - office
+
