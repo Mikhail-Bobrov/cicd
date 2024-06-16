@@ -54,7 +54,7 @@ ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
   hosts:
-  - host: analytics-preprod.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: Prefix

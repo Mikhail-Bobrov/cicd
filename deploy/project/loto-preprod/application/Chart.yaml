@@ -54,7 +54,7 @@ ingress:
     nginx.ingress.kubernetes.io/server-snippet: if ($request_uri = /actuator/prometheus) { return 403; }
 
   hosts:
-  - host: game-api-preprod.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: ImplementationSpecific

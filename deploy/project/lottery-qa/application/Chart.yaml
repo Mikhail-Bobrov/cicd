@@ -84,13 +84,13 @@ ingress:
     nginx.ingress.kubernetes.io/server-snippet: if ($request_uri = /actuator/prometheus) { return 403; }
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
-  - host: game-api-qa.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: Prefix
   tls:
   - hosts:
-    - game-api-qa.belbet.by
+    - mytestingress
     secretName: default-ssl-secret
 
 

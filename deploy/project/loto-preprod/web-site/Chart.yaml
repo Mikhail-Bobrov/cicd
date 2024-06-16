@@ -67,7 +67,7 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: 3m
   hosts:
-    - host: preprod.belbet.by
+    - host: mytestingress
       paths:
         - path: /
           pathType: Prefix

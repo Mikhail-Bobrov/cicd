@@ -84,7 +84,7 @@ ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
   hosts:
-  - host: sequence-hash-verifier-preprod.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: ImplementationSpecific

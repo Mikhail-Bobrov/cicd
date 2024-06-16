@@ -11,44 +11,44 @@ variables:
 workflow:
   name: '$ENV $BRANCH $PROJECT $RUN_TEST'
   rules:
-    - if: '$ENV == "lottery-qa"'
+    - if: '$ENV == "project"'
       variables:
         REGISTRY_URL: 'eu.gcr.io'
-        REGISTRY_PROJECT: 'lottery-qa'
+        REGISTRY_PROJECT: 'project'
         REGION: 'europe-west1'
         DEPLOY_GCP: "true"
         NAMESPACE: "default"
-    - if: '$ENV == "loto-preprod"'
+    - if: '$ENV == "project2"'
       variables:
-        REGISTRY_URL: 'registry.preprod.kipod'
-        REGISTRY_PROJECT: 'belbet'
+        REGISTRY_URL: 'registry.preprod'
+        REGISTRY_PROJECT: 'project2'
         DEPLOY_OFFICE: "true"
         NAMESPACE: "lottery"
-    - if: '$ENV == "loto-prod"'
+    - if: '$ENV == "project3"'
       variables:
-        REGISTRY_URL: 'registry.prod.loto'
-        REGISTRY_PROJECT: 'lottery'
+        REGISTRY_URL: 'registry.prod'
+        REGISTRY_PROJECT: 'project3'
         DEPLOY_OFFICE: "true"
         NAMESPACE: "lottery"
         RELEASE: "true"
-    - if: '$ENV == "lottery-bb-test"'
+    - if: '$ENV == "project4"'
       variables:
         REGISTRY_URL: 'eu.gcr.io'
-        REGISTRY_PROJECT: 'lottery-bb-test'
+        REGISTRY_PROJECT: 'project4'
         REGION: 'europe-west1'
         DEPLOY_GCP: "true"
         NAMESPACE: "default"
-    - if: '$ENV == "lottery-develop"'
+    - if: '$ENV == "project5"'
       variables:
         REGISTRY_URL: 'eu.gcr.io'
-        REGISTRY_PROJECT: 'lottery-develop'
+        REGISTRY_PROJECT: 'project5'
         REGION: 'europe-west1'
         DEPLOY_GCP: "true"
         NAMESPACE: "default"
-    - if: '$ENV == "loto-marketing"'
+    - if: '$ENV == "project6"'
       variables:
         REGISTRY_URL: 'eu.gcr.io'
-        REGISTRY_PROJECT: 'loto-marketing'
+        REGISTRY_PROJECT: 'project6'
         REGION: 'europe-west1'
         DEPLOY_GCP: "true"
         NAMESPACE: "default"
@@ -76,14 +76,13 @@ build-gcp:
     paths:
       - build/${PROJECT}/ci_commit_sha-${PROJECT}
   tags:
-    - wow-develop
+    - runner-tag
 
 deploy-gcp:
   stage: deploy-gcp
   dependencies:
     - build-gcp
   script:
-    - if [ $PROJECT == lottery ] ; then ./deploy/lottery-deploy.sh $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL $NAMESPACE $DEPLOY_GCP $REGION && exit 0; fi
     - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat build/${PROJECT}/ci_commit_sha-${PROJECT})" > deploy/images/${PROJECT}
     - cat deploy/images/${PROJECT}
     - gcloud container clusters get-credentials $REGISTRY_PROJECT-gke --region $REGION --project $REGISTRY_PROJECT
@@ -92,7 +91,7 @@ deploy-gcp:
     - helm upgrade --install $PROJECT -n $NAMESPACE -f deploy/project/${ENV}/${PROJECT}/Chart.yaml  deploy/
     - kubectl rollout  status -n $NAMESPACE  $(kubectl get deployments.apps  -n $NAMESPACE  -l name=${PROJECT} -o name) --timeout=180s
   tags:
-    - wow-develop
+    - runner-tag
   rules:
     - if: '$RELEASE == "true" && $DEPLOY_GCP == "true"'
       when: manual
@@ -121,7 +120,6 @@ deploy-dc:
   dependencies:
     - build-dc
   script:
-    - if [ $PROJECT == lottery ] ; then ./deploy/lottery-deploy.sh $ENV $BRANCH $REGISTRY_PROJECT $REGISTRY_URL $NAMESPACE $DEPLOY_GCP $REGION && exit 0; fi
     - echo "${REGISTRY_URL}/${REGISTRY_PROJECT}/${PROJECT}:${BRANCH}-${CI_PIPELINE_ID}-$(cat build/${PROJECT}/ci_commit_sha-${PROJECT})" > deploy/images/${PROJECT}
     - cat deploy/images/${PROJECT}
     - export KUBECONFIG=~/.kube/$ENV

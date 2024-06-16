@@ -51,13 +51,13 @@ ingress:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
-  - host: sequence-hash-verifier-qa.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: Prefix
   tls:
   - hosts:
-    - sequence-hash-verifier-qa.belbet.by
+    - mytestingress
     secretName: default-ssl-secret
 
 

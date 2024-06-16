@@ -60,7 +60,7 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
     nginx.ingress.kubernetes.io/server-snippet: if ($request_uri = /actuator/prometheus) { return 403; }
   hosts:
-  - host: bo-preprod.belbet.by
+  - host: mytestingress
     paths:
       - path: /
         pathType: ImplementationSpecific
