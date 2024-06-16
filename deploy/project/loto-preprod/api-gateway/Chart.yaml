@@ -71,7 +71,7 @@ deployment:
       KAFKA_ADDRESS:
         kafka-lottery-main-write: address
   - name: jvmdump
-    customImage: registry.preprod.kipod/infra/jvmdump:1.0.2
+    customImage: registry.preprod/infra/jvmdump:1.0.2
     probe:
       livenessProbe:
         enable: false
