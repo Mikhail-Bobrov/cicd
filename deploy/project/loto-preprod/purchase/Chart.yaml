@@ -1,6 +1,6 @@
-name: belbet-purchase-service
+name: purchase-service
 imagename: purchase
-namespace: lottery
+namespace: test1
 
 
 service:
@@ -44,32 +44,6 @@ deployment:
     restartPolicy: Always
     env: {}
     envFromSecret:
-      PAYMENT_PURCHASE_WEBPAY_USERNAME:
-        webpay-payment: username
-      DATASOURCE_BELLOTO_PORT:
-        postgres-lottery-main-write: port
-      PAYMENT_PURCHASE_WEBPAY_PASSWORD:
-        webpay-payment: password
-      DATASOURCE_BELLOTO_ADDRESS:
-        postgres-lottery-main-write: host
-      PAYMENT_PURCHASE_BEPAID_KEY:
-        lottery-payment: purchase-bepaid-key
-      PAYMENT_PURCHASE_WEBPAY_STORE-ID:
-        webpay-payment: store-id
-      PAYMENT_PURCHASE_WEBPAY_SECRET-KEY:
-        webpay-payment: purchase-secret-key
-      JWT_KEY:
-        lottery-jwt: private-key
-      DATASOURCE_BELLOTO_USERNAME:
-        postgres-lottery-main-admin: superuser
-      KAFKA_ADDRESS:
-        kafka-lottery-main-write: address
-      DATASOURCE_BELLOTO_PASSWORD:
-        postgres-lottery-main-admin: superuser-password
-      PAYMENT_PURCHASE_BEPAID_ID:
-        lottery-payment: purchase-bepaid-id
-      PAYMENT_PURCHASE_WEBPAY_SEED:
-        webpay-payment: purchase-seed
 
 ingress:
   enable: false

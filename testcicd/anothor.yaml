@@ -1,0 +1,51 @@
+stages:
+  - units
+  - build-deploy
+
+default:
+  image: myimage 
+
+unit-tests:
+  stage: units
+  allow_failure: false
+  only:
+    refs:
+      - unit-test
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - cp secrets-folder/service_account.json src/google_drive/
+    - cp secrets-folder/env.local.backend .
+    - docker-compose -f docker-compose-units.yaml up --build --force-recreate --exit-code-from test
+  tags:
+    - office
+  after_script:
+    - docker-compose -f docker-compose-units.yaml down --remove-orphans --rmi local --volumes
+
+build-deploy-dev:
+  stage: build-deploy
+  timeout: 4h
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - dev
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - REPO_BACK="${CI_REGISTRY}/test/${CI_COMMIT_SHORT_SHA}"
+    - echo "TAG_BACKEND=${REPO_BACK}" > .env
+    - cp secrets-folder/service_account.json src/google_drive/
+    - docker build  -t $REPO_BACK .
+    - docker push "$REPO_BACK"
+    - docker rmi $REPO_BACK -f
+    - scp .env secrets-folder/env.dev* deploy/dev/docker-compose.yaml ${SSH_SERVER_ID_DEV}:/home/cvtindev/cvtinder/backend
+    - ssh ${SSH_SERVER_ID_DEV} 'cd /home && docker-compose pull && docker-compose up -d'
+  tags:
+    - office
