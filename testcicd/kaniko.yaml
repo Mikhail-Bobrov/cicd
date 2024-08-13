@@ -1,0 +1,41 @@
+stages:
+  - build
+  - deploy
+
+default:
+  image: v1
+
+build:
+  stage: build
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - master
+  image:
+    name: v5
+    entrypoint: ["/busybox/sh", "-c"]
+  tags:
+    - office
+  script:
+    - echo "ci-short-sha - ${CI_COMMIT_SHORT_SHA}"
+    - REPO="${CI_REGISTRY}/project:tag-${CI_COMMIT_SHORT_SHA}"
+    - /kaniko/executor --context $CI_PROJECT_DIR/dir --dockerfile $CI_PROJECT_DIR/dir/Dockerfile --destination $REPO
+
+deploy:
+  stage: deploy
+  only:
+    refs:
+      - master
+  needs: ["build"]
+  image:
+    name: v1.1
+  tags:
+    - k8s
+  script:
+    - REPO="${CI_REGISTRY}/project:tag-${CI_COMMIT_SHORT_SHA}"
+    - echo $REPO 
+    - echo $REPO > deploy/image
+    - helm template deploy
+    - helm upgrade --install -n default name deploy/
+
