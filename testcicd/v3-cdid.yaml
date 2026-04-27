@@ -1,0 +1,118 @@
+stages:
+  - units
+  - build-deploy-dev
+  - build-deploy-stage
+  - build-deploy-prod
+
+default:
+  image: gitlab.azati.com:4567/python/project-matcher/docker:29.0.0v3
+
+unit-tests:
+  stage: units
+  allow_failure: false
+  timeout: 4h
+  only:
+    refs:
+      - dev
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - cp secrets-folder/service_account.json src/google_drive/
+    - cp secrets-folder/service_account_for_fetch.json src/google_drive/creds/
+    - cp secrets-folder/env.local.backend .
+    - cat deploy/env.units.backend.public >> env.local.backend
+    - docker-compose -f docker-compose-units.yaml up --build --force-recreate --exit-code-from web
+  tags:
+    - office
+    - ci-2
+
+  after_script:
+    - docker-compose -f docker-compose-units.yaml down --remove-orphans --rmi local --volumes
+
+build-deploy-dev:
+  stage: build-deploy-dev
+  timeout: 4h
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - dev
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - REPO_BACK="${CI_REGISTRY}/python/project-matcher/cvtinder:dev-${CI_COMMIT_SHORT_SHA}"
+    - echo "TAG_BACKEND=${REPO_BACK}" > .env
+    - cp secrets-folder/service_account.json src/google_drive/
+    - cp secrets-folder/service_account_for_fetch.json src/google_drive/creds/
+    - cp secrets-folder/env.dev.backend .
+    - cat deploy/dev/env.dev.backend.public >> env.dev.backend
+    - docker build  -t $REPO_BACK .
+    - docker push "$REPO_BACK"
+    - docker rmi $REPO_BACK -f
+    - scp .env env.dev.backend deploy/dev/docker-compose.yaml ${SSH_SERVER_ID_DEV}:/home/cvtindev/cvtinder/backend
+    - ssh ${SSH_SERVER_ID_DEV} 'cd /home/cvtindev/cvtinder/backend && docker-compose pull && docker-compose up -d'
+  tags:
+    - office
+
+build-deploy-stage:
+  stage: build-deploy-stage
+  timeout: 4h
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - test
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - REPO_BACK="${CI_REGISTRY}/python/project-matcher/cvtinder:stage-${CI_COMMIT_SHORT_SHA}"
+    - echo "TAG_BACKEND=${REPO_BACK}" > .env
+    - cp secrets-folder/service_account.json src/google_drive/
+    - cp secrets-folder/service_account_for_fetch.json src/google_drive/creds/
+    - cp secrets-folder/env.stage.backend .
+    - cat deploy/stage/env.stage.backend.public >> env.stage.backend
+    - docker build  -t $REPO_BACK .
+    - docker push "$REPO_BACK"
+    - docker rmi $REPO_BACK -f
+    - scp .env env.stage.backend deploy/stage/docker-compose.yaml ${SSH_SERVER_ID_STAGE}:/home/cvtinstage/cvtinder/backend
+    - ssh ${SSH_SERVER_ID_STAGE} 'cd /home/cvtinstage/cvtinder/backend && docker-compose pull && docker-compose up -d'
+  tags:
+    - office
+
+build-deploy-prod:
+  stage: build-deploy-prod
+  timeout: 4h
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - main
+  before_script:
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | sh
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: 'secrets-folder'
+  script:
+    - REPO_BACK="${CI_REGISTRY}/python/project-matcher/cvtinder:prod-${CI_COMMIT_SHORT_SHA}"
+    - echo "TAG_BACKEND=${REPO_BACK}" > .env
+    - cp secrets-folder/service_account.json src/google_drive/
+    - cp secrets-folder/service_account_for_fetch.json src/google_drive/creds/
+    - cp secrets-folder/env.prod.backend .
+    - cat deploy/prod/env.prod.backend.public >> env.prod.backend
+    - docker build  -t $REPO_BACK .
+    - docker push "$REPO_BACK"
+    - docker rmi $REPO_BACK -f
+    - scp .env env.prod.backend deploy/prod/docker-compose.yaml ${SSH_SERVER_ID_PROD}:/home/cvtinprod/cvtinder/backend
+    - ssh ${SSH_SERVER_ID_PROD} 'cd /home/cvtinprod/cvtinder/backend && docker-compose pull && docker-compose up -d'
+  tags:
+    - office
+

@@ -1,0 +1,76 @@
+stages:
+  - build-dev
+  - deploy-dev
+  - build-prod
+  - deploy-prod
+
+default:
+  image: gitlab.azati.com:4567/python/itibo/kaniko:conf.v6
+
+build-dev:
+  stage: build-dev
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - master
+  image:
+    name: gitlab.azati.com:4567/python/itibo/kaniko:conf.v6
+    entrypoint: ["/busybox/sh", "-c"]
+  tags:
+    - office
+  script:
+    - echo "ci-short-sha - ${CI_COMMIT_SHORT_SHA}"
+    - REPO="${CI_REGISTRY}/python/itibo:dev-${CI_COMMIT_SHORT_SHA}"
+    - /kaniko/executor --context $CI_PROJECT_DIR/azati_web --dockerfile $CI_PROJECT_DIR/azati_web/Dockerfile --destination $REPO
+
+deploy-dev:
+  stage: deploy-dev
+  only:
+    refs:
+      - master
+  needs: ["build-dev"]
+  image:
+    name: gitlab.azati.com:4567/python/itibo/infra:builderv1.1
+  tags:
+    - k8s
+  script:
+    - REPO="${CI_REGISTRY}/python/itibo:dev-${CI_COMMIT_SHORT_SHA}"
+    - echo $REPO 
+    - echo $REPO > deploy/image
+    - helm template -f deploy/Chart-dev.yaml deploy
+    - helm upgrade --install -n itibo itibo-dev -f deploy/Chart-dev.yaml deploy/
+
+build-prod:
+  stage: build-prod
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - prod
+  image:
+    name: gitlab.azati.com:4567/python/itibo/kaniko:conf.v6
+    entrypoint: ["/busybox/sh", "-c"]
+  tags:
+    - office
+  script:
+    - echo "ci-short-sha - ${CI_COMMIT_SHORT_SHA}"
+    - REPO="${CI_REGISTRY}/python/itibo:prod-${CI_COMMIT_SHORT_SHA}"
+    - /kaniko/executor --context $CI_PROJECT_DIR/azati_web --dockerfile $CI_PROJECT_DIR/azati_web/Dockerfile --destination $REPO
+
+deploy-prod:
+  stage: deploy-prod
+  only:
+    refs:
+      - prod
+  needs: ["build-prod"]
+  image:
+    name: gitlab.azati.com:4567/python/itibo/infra:builderv1.1
+  tags:
+    - k8s
+  script:
+    - REPO="${CI_REGISTRY}/python/itibo:prod-${CI_COMMIT_SHORT_SHA}"
+    - echo $REPO 
+    - echo $REPO > deploy/image
+    - helm template -f deploy/Chart-prod.yaml deploy
+    - helm upgrade --install -n itibo itibo-prod -f deploy/Chart-prod.yaml deploy/
